@@ -8,7 +8,7 @@ if ! command -V conda &> /dev/null
 then
 	echo "Installing miniconda (Python distribution)…"
 	curl https://repo.anaconda.com/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -o ./miniconda.sh &> /dev/null
-	bash ./miniconda.sh -b -p $CONDA_HOME &> /dev/null
+	bash ./miniconda.sh -b -u -p $CONDA_HOME &> /dev/null
 	echo "Installing miniconda (Python distribution)…Done!"
 
 	echo "Configuring miniconda for first use…"
