@@ -20,37 +20,52 @@ def send_commands(commands, ip="127.0.0.1"):
 
 def _send_commands_thread(commands, ip="127.0.0.1"):
     ur_c = _get_rtde_control(ip)
+    io = _get_rtde_io_interface(ip)
 
-    print("Stopping current motions...")
-    ur_c.stopJ(0.1)
-    print("Stopped")
+    try:
+        print("Stopping current motions...")
+        ur_c.stopJ(0.1)
+        print("Stopped")
 
-    grouped = group_commands(commands)
-    print("Grouped {} commands in {} groups".format(len(commands), len(grouped)))
-    for group in grouped:
-        # print(group)
-        if isinstance(group, list):
-            path = []
-            for cmd in group:
-                path.append(
-                    _get_ur_joint_values_in_order(cmd["configuration"])
-                    + [cmd["speed"], cmd["accel"], cmd["blend"]]
-                )
+        grouped = group_commands(commands)
+        print("Grouped {} commands in {} groups".format(len(commands), len(grouped)))
+        for group in grouped:
+            # print("Executing group...")
+            # print(group)
 
-            print(f"Sending path of length={len(path)}")
-            for pt in path:
-                print(
-                    " - {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(
-                        *map(math.degrees, pt[:6])
+            if isinstance(group, list):
+                path = []
+                for cmd in group:
+                    path.append(
+                        _get_ur_joint_values_in_order(cmd["configuration"])
+                        + [cmd["speed"], cmd["accel"], cmd["blend"]]
                     )
-                )
-            if len(path):
-                ur_c.moveJ(path)
-        else:
-            if cmd["command"] == "wait":
-                print("Waiting {} seconds".format({cmd["wait_time"]}))
-                time.sleep(cmd["wait_time"])
-            # if isinstance
+
+                print(f"Sending path of length={len(path)}")
+                for pt in path:
+                    print(
+                        " - {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}".format(
+                            *map(math.degrees, pt[:6])
+                        )
+                    )
+
+                if len(path):
+                    ur_c.moveJ(path)
+            else:
+                cmd = group
+                if cmd["command"] == "wait":
+                    print("Waiting {} seconds".format(cmd["wait_time"]))
+                    time.sleep(cmd["wait_time"])
+                    print("Wait done")
+                if cmd["command"] == "set_digital_io":
+                    print(
+                        "Setting digital IO {} to {}".format(
+                            cmd["signal"], cmd["value"]
+                        )
+                    )
+                    io.setStandardDigitalOut(cmd["signal"], cmd["value"])
+    except Exception as e:
+        print("Error in execution thread: {}".format(e))
 
 
 def _get_ur_joint_values_in_order(config):
@@ -91,7 +106,17 @@ def stop(ip="127.0.0.1"):
 def get_config(ip="127.0.0.1"):
     ur_r = _get_rtde_receive(ip)
     robot_joints = ur_r.getActualQ()
-    config = Configuration.from_revolute_values(robot_joints)
+    config = Configuration.from_revolute_values(
+        robot_joints,
+        joint_names=[
+            "shoulder_pan_joint",
+            "shoulder_lift_joint",
+            "elbow_joint",
+            "wrist_1_joint",
+            "wrist_2_joint",
+            "wrist_3_joint",
+        ],
+    )
     return config
 
 
